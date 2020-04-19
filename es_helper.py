@@ -1,177 +1,91 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# Author: gexiao
-# Created on 2017-09-19 22:12
+from elasticsearch_async import AsyncElasticsearch
 
-from elasticsearch import Elasticsearch
+ES_HOST = ['127.0.0.1:9200']
+ES_INDICES = ['cc98_index_1', 'cc98_index_2']
 
-ES_HOST = '127.0.0.1:9200'
-TOPIC_ALIAS_NAME = 'topic'
-TOPIC_TYPE_NAME = 'topic'
-
-es = Elasticsearch([ES_HOST])
+es = AsyncElasticsearch(ES_HOST)
 
 
-def must_query(gte, lte, node_id):
+def must_query(gte, lte):
     query_list = []
     if gte or lte:
         range_query = {
             "range": {
-                "created": {
+                "posttime": {
                     "format": "epoch_second"
                 }
             }
         }
         if gte and isinstance(gte, int):
-            range_query["range"]["created"]["gte"] = gte
-
+            range_query["range"]["posttime"]["gte"] = gte
         if lte and isinstance(lte, int):
-            range_query["range"]["created"]["lte"] = lte
-
+            range_query["range"]["posttime"]["lte"] = lte
         query_list.append(range_query)
 
-    if node_id and isinstance(node_id, int):
-        node_query = {
-            "term": {
-                "node": {
-                    "value": node_id
-                }
-            }
-        }
-        query_list.append(node_query)
+        return query_list
+
+
+def must_not_query(excluded):
+    query_list = [{"term": {"id": "4789044"}}]
+    if excluded and isinstance(excluded, int):
+        excluded_query = {"term": {"id": excluded}}
+        query_list.append(excluded_query)
 
     return query_list
 
 
-def generate_search_body(keyword, es_from, es_size, gte=None, lte=None, node_id=None, operator='or'):
+async def es_search(keyword, es_from, es_size, gte=None, lte=None, operator='or', excluded=None):
     body = {
         "from": es_from,
         "size": es_size,
         "highlight": {
-            "order": "score",
-            "fragment_size": 80,
+            "fragment_size": 50,
             "fields": {
-                "title": {
-                    "number_of_fragments": 1
-                },
                 "content": {
                     "number_of_fragments": 1
-                },
-                "postscript_list.content": {
-                    "number_of_fragments": 1
-                },
-                "reply_list.content": {
-                    "number_of_fragments": 1,
-                    "highlight_query": {
-                        "nested": {
-                            "path": "reply_list",
-                            "query": {
-                                "match": {
-                                    "reply_list.content": {
-                                        "query": keyword,
-                                        "analyzer": "ik_smart"
-                                    }
-                                }
-                            }
-                        }
-                    }
                 }
             }
         },
-        "_source": ["title",
-                    "content",
-                    "created",
-                    "id",
-                    "node",
-                    "replies",
-                    "member"],
+        "_source": [
+            "id",
+            "lc",
+            "posttime",
+            "user"
+        ],
         "query": {
             "function_score": {
                 "query": {
                     "bool": {
-                        "must": must_query(gte, lte, node_id),
-                        "must_not": [
-                            {
-                                "term": {
-                                    "deleted": True
-                                }
-                            }
-                        ],
+                        "must": must_query(gte, lte),
+                        "must_not": must_not_query(excluded),
                         "minimum_should_match": 1,
                         "should": [
                             {
                                 "match": {
-                                    "title": {
+                                    "content": {
                                         "query": keyword,
                                         "analyzer": "ik_smart",
-                                        "boost": 3,
+                                        "boost": 2,
                                         "operator": operator
                                     }
                                 }
-                            },
-                            {
-                                "bool": {
-                                    "should": [
-                                        {
-                                            "match": {
-                                                "content": {
-                                                    "query": keyword,
-                                                    "analyzer": "ik_smart",
-                                                    "boost": 2,
-                                                    "operator": operator
-                                                }
-                                            }
-                                        },
-                                        {
-                                            "nested": {
-                                                "path": "postscript_list",
-                                                "score_mode": "max",
-                                                "query": {
-                                                    "match": {
-                                                        "postscript_list.content": {
-                                                            "query": keyword,
-                                                            "analyzer": "ik_smart",
-                                                            "boost": 2,
-                                                            "operator": operator
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    ]
-                                }
-                            },
-                            {
-                                "match": {
-                                    "all_reply": {
-                                        "query": keyword,
-                                        "analyzer": "ik_smart",
-                                        "boost": 1.5,
-                                        "operator": operator
-                                    }
-                                }
+
                             }
                         ]
                     }
                 },
                 "functions": [
                     {
-                        "filter": {"match_phrase": {
-                            "all_content": {
-                                "query": keyword,
-                                "analyzer": "ik_max_word",
-                                "slop": 0
+                        "filter": {
+                            "match_phrase": {
+                                "content": {
+                                    "query": keyword,
+                                    "analyzer": "ik_max_word",
+                                    "slop": 0
+                                }
                             }
-                        }},
+                        },
                         "weight": 50
-                    },
-                    {
-                        "field_value_factor": {
-                            "field": "bonus",
-                            "missing": 0,
-                            "modifier": "none",
-                            "factor": 1
-                        }
                     }
                 ],
                 "score_mode": "sum",
@@ -179,84 +93,44 @@ def generate_search_body(keyword, es_from, es_size, gte=None, lte=None, node_id=
             }
         }
     }
-    return body
+
+    result = await es.search(body=body, index=ES_INDICES)
+    return result
 
 
-def generate_time_order_search_body(keyword, es_from, es_size, order, gte=None, lte=None, node_id=None, operator='or'):
+async def es_time_order_search(keyword, es_from, es_size, order, gte=None, lte=None, operator='or', excluded=None):
     body = {
         "from": es_from,
         "size": es_size,
         "sort": [
             {
-                "created": {
+                "posttime": {
                     "order": "asc" if order else "desc"
                 }
             }
         ],
         "highlight": {
-            "order": "score",
-            "fragment_size": 80,
+            "fragment_size": 50,
             "fields": {
-                "title": {
-                    "number_of_fragments": 1
-                },
                 "content": {
                     "number_of_fragments": 1
-                },
-                "postscript_list.content": {
-                    "number_of_fragments": 1
-                },
-                "reply_list.content": {
-                    "number_of_fragments": 1,
-                    "highlight_query": {
-                        "nested": {
-                            "path": "reply_list",
-                            "query": {
-                                "match": {
-                                    "reply_list.content": {
-                                        "query": keyword,
-                                        "analyzer": "ik_smart"
-                                    }
-                                }
-                            }
-                        }
-                    }
                 }
             }
         },
         "_source": [
-            "title",
-            "content",
-            "created",
             "id",
-            "node",
-            "replies",
-            "member"
+            "lc",
+            "posttime",
+            "user"
         ],
         "query": {
             "constant_score": {
                 "filter": {
                     "bool": {
-                        "must": must_query(gte, lte, node_id),
-                        "must_not": [
-                            {
-                                "term": {
-                                    "deleted": True
-                                }
-                            }
-                        ],
+                        "must": must_query(gte, lte),
+                        "must_not": must_not_query(excluded),
                         "minimum_should_match": 1,
                         "should": [
-                            {
-                                "match": {
-                                    "title": {
-                                        "query": keyword,
-                                        "analyzer": "ik_smart",
-                                        "minimum_should_match": "2<70%",
-                                        "operator": operator
-                                    }
-                                }
-                            },
                             {
                                 "match": {
                                     "content": {
@@ -268,24 +142,8 @@ def generate_time_order_search_body(keyword, es_from, es_size, order, gte=None, 
                                 }
                             },
                             {
-                                "nested": {
-                                    "path": "postscript_list",
-                                    "score_mode": "max",
-                                    "query": {
-                                        "match": {
-                                            "postscript_list.content": {
-                                                "query": keyword,
-                                                "analyzer": "ik_smart",
-                                                "minimum_should_match": "2<70%",
-                                                "operator": operator
-                                            }
-                                        }
-                                    }
-                                }
-                            },
-                            {
                                 "match_phrase": {
-                                    "all_reply": {
+                                    "content": {
                                         "query": keyword,
                                         "analyzer": "ik_max_word",
                                         "slop": 0
@@ -299,26 +157,94 @@ def generate_time_order_search_body(keyword, es_from, es_size, order, gte=None, 
         }
     }
 
-    return body
+    result = await es.search(body=body, index=ES_INDICES)
+    return result
 
 
-def es_search(keyword, es_from, es_size, gte, lte, node_id, operator):
-    return es.search(index=TOPIC_ALIAS_NAME, doc_type=TOPIC_TYPE_NAME,
-                     body=generate_search_body(keyword, es_from, es_size, gte, lte, node_id, operator))
-
-
-def es_time_order_search(keyword, es_from, es_size, order, gte, lte, node_id, operator):
-    return es.search(index=TOPIC_ALIAS_NAME, doc_type=TOPIC_TYPE_NAME,
-                     body=generate_time_order_search_body(keyword, es_from, es_size, order, gte, lte, node_id, operator))
-
-
-def es_analyze(keyword):
-    body = {
-        'text': keyword,
-        'analyzer': 'ik_smart'
+async def es_eat_melon_search(keyword, es_from, es_size, gte, lte, excluded=None):
+    body1 = {
+        "size": 100,
+        "sort": [
+            {
+                "posttime": {
+                    "order": "desc"
+                }
+            }
+        ],
+        "highlight": {
+            "fragment_size": 50,
+            "fields": {
+                "content": {
+                    "number_of_fragments": 1
+                }
+            }
+        },
+        "_source": [
+            "id",
+            "lc",
+            "posttime",
+            "user"
+        ],
+        "query": {
+            "bool": {
+                "must_not": must_not_query(excluded),
+                "should": {
+                    "match_phrase": {
+                        "content": keyword
+                    }
+                }
+            }
+        }
     }
-    return es.indices.analyze(index=TOPIC_ALIAS_NAME, body=body)
+    body2 = {
+        "size": 100,
+        "highlight": {
+            "fragment_size": 50,
+            "fields": {
+                "content": {
+                    "number_of_fragments": 1
+                }
+            }
+        },
+        "_source": [
+            "id",
+            "lc",
+            "posttime",
+            "user"
+        ],
+        "query": {
+            "bool": {
+                "must_not": must_not_query(excluded),
+                "should": {
+                    "match": {
+                        "content": keyword,
+                    }
+                },
+                "minimum_should_match": "2<75%",
+            }
+        }
+    }
+    resultFullMatch = await es.search(body=body1, index=ES_INDICES)
+    resultPartialMatch = await es.search(body=body2, index=ES_INDICES)
+    newHits = resultFullMatch['hits']['hits']
+    for hit in resultPartialMatch['hits']['hits']:
+        newHits.append(hit)
+    resultFullMatch['hits']['hits'] = newHits
+    resultFullMatch['hits']['hits'] = resultFullMatch['hits']['hits'][es_from:es_from+es_size]
+    return resultFullMatch
 
 
-def es_clause_count(keyword):
-    return len(es_analyze(keyword)['tokens'])
+async def get_topic_names(topicIDList=[]):
+    # Add hits['hits'][n]['_source']['topicname']
+    # TODO: Use official API
+    if topicIDList is None:
+        return topicIDList
+    es_body = ''
+    for topicID in topicIDList:
+        body = {"from": 0, "size": 1, "_source": ["content"], "query": {
+            "bool": {"must": [{"term": {"id": topicID}}, {"term": {"lc": 0}}]}}}
+        es_body = es_body + '{}\n' + str(body).replace("'", '"') + '\n'
+    result = await es.msearch(body=es_body, index=ES_INDICES)
+    names = [x['hits']['hits'][0]['_source']['content']
+             for x in result['responses']]
+    return names

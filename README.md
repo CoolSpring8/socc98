@@ -1,71 +1,21 @@
-<p align="center"><img src="http://ksria.com/sov2ex/assets/images/logo@2x.png" /></p>
-<p align="center">SOV2EX - 一个便捷的 V2EX 站内搜索引擎</p>
+# SOCC98 —— 一个便捷的 CC98 站内搜索引擎
 
-***
+**马上使用：**
 
-#### 马上使用：
-* https://www.sov2ex.com
+- https://www.socc98.com （需学校内网访问）
 
-#### 浏览器扩展
-* 感谢 [V2EX Plus](https://github.com/sciooga/v2ex-plus) 帮我们集成了更加方便的搜索入口
+## 功能
 
-#### 主要功能：
-- Metarial Design 风格；  
-  ![](https://i.imgur.com/jh8FNXRm.png) ![](https://i.imgur.com/w9tjfARm.png)
-- 查询 V2EX 站内的 `标题` `正文` `留言` `附言` 的内容；  
-- 高级搜索，包括：`每页查询的数量` `指定具体的查询节点` `发帖的起止日期` `排序` 等；  
-  ![](https://i.imgur.com/EGAkPSk.png)
-- 支持手机端；  
+众所周知，目前 CC98 论坛自带的搜索功能只限于搜索帖子标题。但你可以在 https://www.socc98.com 对 CC98 帖子的 `标题` `正文` `回帖` 进行高质量的全文搜索。
 
-#### 下一步：
-- [ ] 更多的搜索条件；  
-- [ ] 定制化；  
+## 关于
 
-#### API：
-- https://github.com/bynil/sov2ex/blob/master/API.md
+这是 [bynil/sov2ex - master](https://github.com/bynil/sov2ex/tree/master) 的一个 Fork，在原项目基础上进行了一定程度的修改，以更好地适配浙江大学校内论坛 CC98 的帖子情况；同时用 Python 异步 Web 框架 FastAPI 简单重写了一下。（性能提升和实际意义都不大，毕竟原项目已经从之前的 Flask 直接改用 Go 重构了。）
 
-#### 更新日志：
-- version `beta 1.0.0` at 2017-09-24
-  * 上线简单的关键词查询，开放源码和 API；
+## Credit
 
-- version `1.0.0` at 2017-10-16
-  * 完成 `Metarial design 风格` `高级查询` `手机端` 支持；
+All credit goes to 原项目的两位作者：
 
-- version `1.0.1` at 2017-10-18
-  - [x] 调整字重与字体颜色；
-  - [x] 修复分页逻辑，当前可搜索的最大页数为 100；
-  - [x] 首页自动聚焦到搜索框；
-  - [x] 优化 url 为非法参数时的错误处理流程；
-  - [x] 搜索链接统一为 `https`；
-
-#### 作者：
 - 后端 via [默默](http://www.gexiao.me/)
 - 前端 via [Kenshin Wang](https://github.com/Kenshin/sov2ex)
 
-#### 相关链接：
-* [更新日志](https://github.com/bynil/sov2ex/blob/master/README.md#更新日志)
-* [反馈](https://github.com/bynil/sov2ex/issues)
-
-#### SOV2EX 的诞生离不开它们：
-- [Elasticsearch](https://www.elastic.co/)
-- [IK Analysis for Elasticsearch](https://github.com/medcl/elasticsearch-analysis-ik)
-- [Flask](http://flask.pocoo.org/)
-- [MongoDB](https://www.mongodb.com/)
-- [Node.js](https://nodejs.org/) · [NPM](https://www.npmjs.com)
-- [Webpack](https://webpack.github.io/)
-- [React](https://facebook.github.io/react)
-- [ES6](http://es6-features.org/) · [Babel](https://babeljs.io)
-- [PostCSS](http://postcss.org/) · [cssnext](http://cssnext.io/)
-- [jQuery](https://jquery.com/) · [pangu.js](https://github.com/vinta/pangu.js) · [Velocity.js](http://velocityjs.org/)
-- [Visual Studio Code](https://code.visualstudio.com/)
-- [Sketch](https://www.sketchapp.com/) · [Pixelmator](http://www.pixelmator.com/)
-- Icon from <http://iconfont.cn>
-- Material Design usage <https://material.io/guidelines/>
-- 咖啡 · 网易音乐 · Google Chrome · rMBP
-
-#### 许可：
-[![license-badge]][license-link]
-
-<!-- Link -->
-[license-badge]:    https://img.shields.io/github/license/mashape/apistatus.svg
-[license-link]:     https://opensource.org/licenses/MIT

@@ -1,0 +1,9 @@
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/"
+                       xmlns:moz="http://www.mozilla.org/2006/browser/search/">
+  <ShortName>SOCC98</ShortName>
+  <Description>CC98 站内搜索</Description>
+  <InputEncoding>UTF-8</InputEncoding>
+  <Image width="16" height="16" type="image/x-icon">https://www.socc98.com/static/assets/favicon/apple-icon-144x144.png</Image>
+  <Url type="text/html" method="get" template="https://www.socc98.com/?q={searchTerms}&amp;ref=opensearch"/>
+  <moz:SearchForm>https://www.socc98.com</moz:SearchForm>
+</OpenSearchDescription>
